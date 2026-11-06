@@ -1,12 +1,10 @@
 //! task-tracker: a tiny command-line companion to the React Task Tracker.
 
-mod task;
-
 use std::env;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use task::TaskStore;
+use task_tracker::task::TaskStore;
 
 const USAGE: &str = "\
 task-tracker — manage tasks from the terminal
@@ -72,7 +70,7 @@ fn run(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
                 return Err("please add a task description".into());
             }
             let mut store = TaskStore::open(store_path())?;
-            println!("Added: {}", store.add(text, day, reminder));
+            println!("Added: {}", store.list.add(text, day, reminder));
             store.save()?;
         }
 
@@ -80,6 +78,7 @@ fn run(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
             let only_reminders = rest.iter().any(|a| a == "--reminders" || a == "-r");
             let store = TaskStore::open(store_path())?;
             let shown: Vec<_> = store
+                .list
                 .tasks()
                 .iter()
                 .filter(|t| !only_reminders || t.reminder)
@@ -96,7 +95,7 @@ fn run(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
         "toggle" => {
             let id = parse_id(rest.first())?;
             let mut store = TaskStore::open(store_path())?;
-            let t = store.toggle_reminder(id)?;
+            let t = store.list.toggle_reminder(id)?;
             println!("Reminder {}: {t}", if t.reminder { "on" } else { "off" });
             store.save()?;
         }
@@ -104,13 +103,13 @@ fn run(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
         "rm" | "delete" => {
             let id = parse_id(rest.first())?;
             let mut store = TaskStore::open(store_path())?;
-            println!("Deleted: {}", store.remove(id)?);
+            println!("Deleted: {}", store.list.remove(id)?);
             store.save()?;
         }
 
         "clear" => {
             let mut store = TaskStore::open(store_path())?;
-            println!("Deleted {} task(s)", store.clear());
+            println!("Deleted {} task(s)", store.list.clear());
             store.save()?;
         }
 

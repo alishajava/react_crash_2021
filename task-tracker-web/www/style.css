@@ -1,0 +1,108 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f4f1ec;
+  --card: #ffffff;
+  --text: #1d1b19;
+  --muted: #6f6a64;
+  --border: #e3ded6;
+  --task: #f6f4f0;
+  --accent: #c2410c;
+  --accent-text: #ffffff;
+  --reminder: #15803d;
+  --danger: #b91c1c;
+  --shadow: 0 1px 2px rgb(0 0 0 / .05), 0 8px 24px rgb(0 0 0 / .06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #141210;
+    --card: #1e1b18;
+    --text: #f1ede7;
+    --muted: #a49d94;
+    --border: #36312b;
+    --task: #27231f;
+    --accent: #f97316;
+    --accent-text: #1a0d03;
+    --reminder: #4ade80;
+    --danger: #f87171;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141210; --card: #1e1b18; --text: #f1ede7; --muted: #a49d94; --border: #36312b;
+  --task: #27231f; --accent: #f97316; --accent-text: #1a0d03; --reminder: #4ade80; --danger: #f87171; --shadow: none;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+}
+.container {
+  max-width: 520px;
+  margin: 40px auto;
+  padding: 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+@media (max-width: 560px) {
+  .container { margin: 16px; padding: 18px; }
+}
+.header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+h1 { margin: 0; font-size: 1.6rem; letter-spacing: -.01em; }
+.sub { margin: 0; color: var(--muted); font-size: .85rem; }
+
+.btn {
+  background: var(--accent); color: var(--accent-text);
+  border: 0; border-radius: 8px; padding: 9px 18px;
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+.btn.secondary { background: var(--text); color: var(--card); }
+.btn:hover { filter: brightness(1.08); }
+.btn:focus-visible, .link:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-block { width: 100%; margin-top: 6px; }
+
+.add-form { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.field { display: block; margin-bottom: 12px; }
+.field span { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 4px; }
+.field input {
+  width: 100%; padding: 9px 11px; font: inherit; color: var(--text);
+  background: var(--task); border: 1px solid var(--border); border-radius: 8px;
+}
+.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.small { font-size: .85rem; }
+.error { color: var(--danger); font-size: .85rem; margin: 6px 0 0; min-height: 1em; }
+
+.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.muted { color: var(--muted); }
+
+.tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.task {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  background: var(--task); border-radius: 8px; padding: 10px 12px;
+  border-left: 4px solid transparent; cursor: pointer; user-select: none;
+}
+.task.reminder { border-left-color: var(--reminder); }
+.task h3 { margin: 0; font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
+.task p { margin: 2px 0 0; font-size: .85rem; color: var(--muted); }
+.task-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.icon {
+  background: none; border: 0; cursor: pointer; font-size: 1.05rem; line-height: 1;
+  padding: 4px 6px; border-radius: 6px; color: var(--muted);
+}
+.icon:hover { background: var(--border); }
+.icon.del:hover { color: var(--danger); }
+.icon.bell[aria-pressed="true"] { color: var(--reminder); }
+.empty { text-align: center; padding: 20px 0; margin: 0; }
+
+.footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.footer-actions { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 8px; }
+.link { background: none; border: 0; padding: 0; font: inherit; font-size: .9rem; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.link.danger { color: var(--danger); }
+code { font-size: .85em; }

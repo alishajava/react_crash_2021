@@ -53,35 +53,24 @@ impl From<io::Error> for StoreError {
     }
 }
 
-/// An in-memory list of tasks backed by a file.
-pub struct TaskStore {
-    path: PathBuf,
+/// An in-memory list of tasks. Pure logic, no I/O — shared by the CLI and the web build.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct TaskList {
     tasks: Vec<Task>,
 }
 
-impl TaskStore {
-    /// Load tasks from `path`. A missing file is treated as an empty list.
-    pub fn open(path: impl AsRef<Path>) -> Result<Self, StoreError> {
-        let path = path.as_ref().to_path_buf();
-        let tasks = match fs::read_to_string(&path) {
-            Ok(s) => parse(&s)?,
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Vec::new(),
-            Err(e) => return Err(e.into()),
-        };
-        Ok(TaskStore { path, tasks })
+impl TaskList {
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    /// Write tasks atomically (temp file + rename).
-    pub fn save(&self) -> Result<(), StoreError> {
-        if let Some(dir) = self.path.parent()
-            && !dir.as_os_str().is_empty()
-        {
-            fs::create_dir_all(dir)?;
-        }
-        let tmp = self.path.with_extension("tmp");
-        fs::write(&tmp, serialize(&self.tasks))?;
-        fs::rename(&tmp, &self.path)?;
-        Ok(())
+    /// Parse the TSV storage format.
+    pub fn from_tsv(s: &str) -> Result<Self, StoreError> {
+        Ok(TaskList { tasks: parse(s)? })
+    }
+
+    pub fn to_tsv(&self) -> String {
+        serialize(&self.tasks)
     }
 
     pub fn tasks(&self) -> &[Task] {
@@ -118,6 +107,38 @@ impl TaskStore {
             .iter()
             .position(|t| t.id == id)
             .ok_or(StoreError::NotFound(id))
+    }
+}
+
+/// A [`TaskList`] backed by a file on disk.
+pub struct TaskStore {
+    path: PathBuf,
+    pub list: TaskList,
+}
+
+impl TaskStore {
+    /// Load tasks from `path`. A missing file is treated as an empty list.
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, StoreError> {
+        let path = path.as_ref().to_path_buf();
+        let list = match fs::read_to_string(&path) {
+            Ok(s) => TaskList::from_tsv(&s)?,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => TaskList::new(),
+            Err(e) => return Err(e.into()),
+        };
+        Ok(TaskStore { path, list })
+    }
+
+    /// Write tasks atomically (temp file + rename).
+    pub fn save(&self) -> Result<(), StoreError> {
+        if let Some(dir) = self.path.parent()
+            && !dir.as_os_str().is_empty()
+        {
+            fs::create_dir_all(dir)?;
+        }
+        let tmp = self.path.with_extension("tmp");
+        fs::write(&tmp, self.list.to_tsv())?;
+        fs::rename(&tmp, &self.path)?;
+        Ok(())
     }
 }
 
@@ -225,7 +246,7 @@ mod tests {
 
     #[test]
     fn ids_increase_after_removal() {
-        let mut s = TaskStore { path: tmp_path("ids"), tasks: vec![] };
+        let mut s = TaskList::new();
         s.add("a".into(), "".into(), false);
         s.add("b".into(), "".into(), false);
         s.remove(1).unwrap();
@@ -234,7 +255,7 @@ mod tests {
 
     #[test]
     fn toggle_and_missing_id() {
-        let mut s = TaskStore { path: tmp_path("toggle"), tasks: vec![] };
+        let mut s = TaskList::new();
         s.add("a".into(), "".into(), false);
         assert!(s.toggle_reminder(1).unwrap().reminder);
         assert!(matches!(s.toggle_reminder(9), Err(StoreError::NotFound(9))));
@@ -246,11 +267,11 @@ mod tests {
         let path = tmp_path("save.tsv");
         let _ = fs::remove_file(&path);
         let mut s = TaskStore::open(&path).unwrap();
-        assert!(s.tasks().is_empty());
-        s.add("Doctors appointment".into(), "Feb 5th at 2:30pm".into(), true);
+        assert!(s.list.tasks().is_empty());
+        s.list.add("Doctors appointment".into(), "Feb 5th at 2:30pm".into(), true);
         s.save().unwrap();
         let s2 = TaskStore::open(&path).unwrap();
-        assert_eq!(s2.tasks(), s.tasks());
+        assert_eq!(s2.list, s.list);
         fs::remove_file(&path).unwrap();
     }
 }
