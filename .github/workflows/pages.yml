@@ -1,0 +1,54 @@
+name: Deploy Rust task tracker to GitHub Pages
+
+on:
+  push:
+    branches: [main, master, claude/rust-project-h35wp3]
+    paths: ["task-tracker-cli/**", "task-tracker-web/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable + wasm32 target)
+        run: |
+          rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
+          rustup default stable
+
+      - name: Test
+        run: |
+          cargo test --manifest-path task-tracker-cli/Cargo.toml
+          cargo test --manifest-path task-tracker-web/Cargo.toml
+
+      - name: Install wasm-bindgen-cli (version from Cargo.lock)
+        run: |
+          V=$(grep -A1 '^name = "wasm-bindgen"$' task-tracker-web/Cargo.lock | sed -n 's/^version = "\(.*\)"/\1/p')
+          cargo install wasm-bindgen-cli --version "$V" --locked
+
+      - name: Build site
+        run: task-tracker-web/build.sh
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: task-tracker-web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

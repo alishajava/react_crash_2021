@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task Tracker</title>
+  <meta name="description" content="Rust + WebAssembly로 만든 할 일 관리">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div>
+        <h1>Task Tracker</h1>
+        <p class="sub">Rust 🦀 + WebAssembly</p>
+      </div>
+      <button id="toggle-form" class="btn" aria-expanded="false" aria-controls="add-form">추가</button>
+    </header>
+
+    <form id="add-form" class="add-form" hidden>
+      <label class="field">
+        <span>할 일</span>
+        <input id="text" type="text" placeholder="예: 병원 예약" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>날짜 · 시간</span>
+        <input id="day" type="text" placeholder="예: 2월 5일 14:30" autocomplete="off">
+      </label>
+      <label class="check">
+        <input id="reminder" type="checkbox">
+        <span>알림 설정</span>
+      </label>
+      <p id="form-error" class="error" role="alert"></p>
+      <button type="submit" class="btn btn-block">저장</button>
+    </form>
+
+    <div class="toolbar">
+      <label class="check small">
+        <input id="only-reminders" type="checkbox">
+        <span>알림만 보기</span>
+      </label>
+      <span id="count" class="muted"></span>
+    </div>
+
+    <ul id="tasks" class="tasks" aria-live="polite"></ul>
+    <p id="empty" class="muted empty" hidden>표시할 할 일이 없습니다</p>
+
+    <footer class="footer">
+      <div class="footer-actions">
+        <button id="export" class="link" type="button">tasks.tsv 내보내기</button>
+        <label class="link">tasks.tsv 가져오기<input id="import" type="file" accept=".tsv,text/plain" hidden></label>
+        <button id="clear" class="link danger" type="button">모두 삭제</button>
+      </div>
+      <p class="muted small">할 일은 이 브라우저에 저장됩니다. 내보낸 파일은 Rust CLI(<code>task-tracker</code>)에서도 그대로 쓸 수 있어요.<br>항목을 더블클릭하면 알림이 켜지고 꺼집니다.</p>
+    </footer>
+  </main>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
