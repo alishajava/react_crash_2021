@@ -18,6 +18,7 @@
     </header>
 
     <form id="add-form" class="add-form" hidden>
+      <h2 id="form-title" class="form-title">새 할 일</h2>
       <label class="field">
         <span>할 일</span>
         <input id="text" type="text" placeholder="예: 병원 예약" autocomplete="off">
@@ -32,34 +33,59 @@
           <input id="time" type="time">
         </label>
       </div>
+      <p id="legacy-day" class="muted small" hidden></p>
       <label class="check">
         <input id="reminder" type="checkbox">
         <span>알림 설정</span>
       </label>
       <p id="form-error" class="error" role="alert"></p>
-      <button type="submit" class="btn btn-block">저장</button>
+      <div class="form-actions">
+        <button id="submit" type="submit" class="btn btn-block">저장</button>
+        <button id="cancel-edit" type="button" class="btn ghost" hidden>취소</button>
+      </div>
     </form>
 
     <div class="toolbar">
-      <label class="check small">
-        <input id="only-reminders" type="checkbox">
-        <span>알림만 보기</span>
-      </label>
-      <span id="count" class="muted"></span>
+      <div class="filters">
+        <label class="check small">
+          <input id="only-reminders" type="checkbox">
+          <span>알림만</span>
+        </label>
+        <label class="check small">
+          <input id="hide-done" type="checkbox">
+          <span>완료 숨기기</span>
+        </label>
+        <label class="small sort">
+          <span class="visually-hidden">정렬</span>
+          <select id="sort">
+            <option value="date">날짜순</option>
+            <option value="added">추가순</option>
+          </select>
+        </label>
+      </div>
+      <span id="count" class="muted small"></span>
     </div>
 
     <ul id="tasks" class="tasks" aria-live="polite"></ul>
     <p id="empty" class="muted empty" hidden>표시할 할 일이 없습니다</p>
 
+    <section class="notify" aria-labelledby="notify-title">
+      <h2 id="notify-title" class="visually-hidden">브라우저 알림</h2>
+      <button id="notify-btn" class="btn ghost small-btn" type="button">🔔 브라우저 알림 켜기</button>
+      <p id="notify-status" class="muted small"></p>
+    </section>
+
     <footer class="footer">
       <div class="footer-actions">
         <button id="export" class="link" type="button">tasks.tsv 내보내기</button>
         <label class="link">tasks.tsv 가져오기<input id="import" type="file" accept=".tsv,text/plain" hidden></label>
+        <button id="clear-done" class="link" type="button">완료 항목 삭제</button>
         <button id="clear" class="link danger" type="button">모두 삭제</button>
       </div>
       <p class="muted small">할 일은 이 브라우저에 저장됩니다. 내보낸 파일은 Rust CLI(<code>task-tracker</code>)에서도 그대로 쓸 수 있어요.<br>항목을 더블클릭하면 알림이 켜지고 꺼집니다.</p>
     </footer>
   </main>
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
   <script type="module" src="main.js"></script>
 </body>
 </html>
