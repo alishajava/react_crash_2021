@@ -7,8 +7,8 @@ Rust with no external dependencies. Each task has text, a day/time, and a remind
 
 ```sh
 cd task-tracker-cli
-cargo run -- add "Doctors appointment" --day "Feb 5th at 2:30pm" --reminder
-cargo run -- add "Meeting at school" -d "Feb 6th"
+cargo run -- add "Doctors appointment" --day "2026-02-05 14:30" --reminder
+cargo run -- add "Meeting at school" -d 2026-02-06
 cargo run -- list
 cargo run -- toggle 2       # toggle reminder
 cargo run -- list -r        # only tasks with reminders

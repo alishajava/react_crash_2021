@@ -10,10 +10,39 @@ function writeStorage(value) {
   try { localStorage.setItem(STORAGE_KEY, value); } catch { /* storage unavailable: keep in memory */ }
 }
 
+// Dates are stored as "YYYY-MM-DD" or "YYYY-MM-DD HH:MM" so they stay readable
+// (and sortable) in the CLI's tasks.tsv. Anything else is shown as free text.
+const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?$/;
+
+function pad(n) { return String(n).padStart(2, "0"); }
+function isoDate(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function daysFromNow(n) { const d = new Date(); d.setDate(d.getDate() + n); return isoDate(d); }
+
+function parseDay(day) {
+  const m = DAY_RE.exec(day);
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m;
+  const date = new Date(+y, +mo - 1, +d, h ? +h : 23, mi ? +mi : 59);
+  return Number.isNaN(date.getTime()) ? null : { date, hasTime: h !== undefined };
+}
+
+function formatDay(day) {
+  const parsed = parseDay(day);
+  if (!parsed) return { text: day, overdue: false };
+  const { date, hasTime } = parsed;
+  const weekday = "일월화수목금토"[date.getDay()];
+  let text = `${date.getMonth() + 1}월 ${date.getDate()}일 (${weekday})`;
+  if (date.getFullYear() !== new Date().getFullYear()) text = `${date.getFullYear()}년 ${text}`;
+  if (hasTime) {
+    text += " " + new Intl.DateTimeFormat("ko-KR", { hour: "numeric", minute: "2-digit" }).format(date);
+  }
+  return { text, overdue: date < new Date() };
+}
+
 const SAMPLE = [
-  ["Doctors Appointment", "Feb 5th at 2:30pm", true],
-  ["Meeting at School", "Feb 6th at 1:30pm", true],
-  ["Food Shopping", "Feb 5th at 2:30pm", false],
+  ["병원 예약", `${daysFromNow(1)} 14:30`, true],
+  ["학교 상담", `${daysFromNow(2)} 13:30`, true],
+  ["장보기", daysFromNow(1), false],
 ];
 
 await init();
@@ -54,8 +83,11 @@ function taskItem(task) {
   h.textContent = task.text;
   body.append(h);
   if (task.day) {
+    const { text, overdue } = formatDay(task.day);
     const p = document.createElement("p");
-    p.textContent = task.day;
+    p.textContent = overdue ? `${text} · 지남` : text;
+    if (overdue) p.className = "overdue";
+    p.title = task.day;
     body.append(p);
   }
 
@@ -94,8 +126,16 @@ $("toggle-form").addEventListener("click", () => {
 
 $("add-form").addEventListener("submit", (e) => {
   e.preventDefault();
+  const date = $("date").value;   // "YYYY-MM-DD" or ""
+  const time = $("time").value;   // "HH:MM" or ""
+  if (time && !date) {
+    $("form-error").textContent = "시간을 넣으려면 날짜도 선택하세요";
+    $("date").focus();
+    return;
+  }
+  const day = date ? (time ? `${date} ${time}` : date) : "";
   try {
-    tracker.add($("text").value, $("day").value, $("reminder").checked);
+    tracker.add($("text").value, day, $("reminder").checked);
   } catch (err) {
     $("form-error").textContent = err.message ?? String(err);
     $("text").focus();

@@ -13,7 +13,7 @@ USAGE:
     task-tracker <COMMAND> [ARGS]
 
 COMMANDS:
-    add <text> [--day <day>] [--reminder]   Add a task
+    add <text> [--day <day>] [--reminder]   Add a task (day e.g. '2026-02-05 14:30')
     list [--reminders]                      List tasks (optionally only reminders)
     toggle <id>                             Toggle a task's reminder
     rm <id>                                 Delete a task
