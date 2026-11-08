@@ -4,7 +4,8 @@ The browser version of the Rust task tracker. All task logic (add, delete, toggl
 the TSV save format) is the same Rust code as the CLI in `../task-tracker-cli`, compiled to
 WebAssembly; the page itself is plain HTML/CSS/JS in `www/`.
 
-Tasks are kept in the browser's localStorage. **Export / import `tasks.tsv`** to move tasks
+Dates are picked with a calendar and stored as `YYYY-MM-DD` or `YYYY-MM-DD HH:MM`
+(free-text days from the CLI still display as-is). Tasks are kept in the browser's localStorage. **Export / import `tasks.tsv`** to move tasks
 between the web page and the CLI.
 
 ## Build locally

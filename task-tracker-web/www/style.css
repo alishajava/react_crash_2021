@@ -74,6 +74,11 @@ h1 { margin: 0; font-size: 1.6rem; letter-spacing: -.01em; }
   width: 100%; padding: 9px 11px; font: inherit; color: var(--text);
   background: var(--task); border: 1px solid var(--border); border-radius: 8px;
 }
+.field-row { display: grid; grid-template-columns: 3fr 2fr; gap: 10px; }
+.field-row .field { min-width: 0; }
+.field input[type="date"], .field input[type="time"] { min-height: 42px; min-width: 0; }
+@media (max-width: 360px) { .field-row { grid-template-columns: 1fr; gap: 0; } }
+.task p.overdue { color: var(--danger); }
 .check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .check input { width: 18px; height: 18px; accent-color: var(--accent); }
 .small { font-size: .85rem; }

@@ -22,10 +22,16 @@
         <span>할 일</span>
         <input id="text" type="text" placeholder="예: 병원 예약" autocomplete="off">
       </label>
-      <label class="field">
-        <span>날짜 · 시간</span>
-        <input id="day" type="text" placeholder="예: 2월 5일 14:30" autocomplete="off">
-      </label>
+      <div class="field-row">
+        <label class="field">
+          <span>날짜</span>
+          <input id="date" type="date">
+        </label>
+        <label class="field">
+          <span>시간 <small class="muted">(선택)</small></span>
+          <input id="time" type="time">
+        </label>
+      </div>
       <label class="check">
         <input id="reminder" type="checkbox">
         <span>알림 설정</span>
