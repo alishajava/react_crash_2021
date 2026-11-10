@@ -5,7 +5,9 @@ the TSV save format) is the same Rust code as the CLI in `../task-tracker-cli`, 
 WebAssembly; the page itself is plain HTML/CSS/JS in `www/`.
 
 Dates are picked with a calendar and stored as `YYYY-MM-DD` or `YYYY-MM-DD HH:MM`
-(free-text days from the CLI still display as-is). Features: mark tasks done, edit them, sort by date or by order added, filter reminders /
+(free-text days from the CLI still display as-is). Features: repeating tasks (daily / weekly / monthly: completing one moves it to its next day),
+search by text or date, undo for deletes / clear / import / completing a repeating task
+(the "되돌리기" button or Ctrl+Z, for 8 seconds), mark tasks done, edit them, sort by date or by order added, filter reminders /
 hide finished, and browser notifications for reminders (while the page is open; date-only
 tasks notify at 9:00). Tasks are kept in the browser's localStorage. **Export / import `tasks.tsv`** to move tasks
 between the web page and the CLI.

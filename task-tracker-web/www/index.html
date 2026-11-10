@@ -33,6 +33,15 @@
           <input id="time" type="time">
         </label>
       </div>
+      <label class="field">
+        <span>반복 <small class="muted">(날짜가 있어야 해요)</small></span>
+        <select id="repeat">
+          <option value="">반복 안 함</option>
+          <option value="daily">매일</option>
+          <option value="weekly">매주</option>
+          <option value="monthly">매월</option>
+        </select>
+      </label>
       <p id="legacy-day" class="muted small" hidden></p>
       <label class="check">
         <input id="reminder" type="checkbox">
@@ -44,6 +53,8 @@
         <button id="cancel-edit" type="button" class="btn ghost" hidden>취소</button>
       </div>
     </form>
+
+    <input id="search" class="search" type="search" placeholder="🔍 검색 (내용 · 날짜)" aria-label="할 일 검색" autocomplete="off">
 
     <div class="toolbar">
       <div class="filters">
@@ -82,7 +93,7 @@
         <button id="clear-done" class="link" type="button">완료 항목 삭제</button>
         <button id="clear" class="link danger" type="button">모두 삭제</button>
       </div>
-      <p class="muted small">할 일은 이 브라우저에 저장됩니다. 내보낸 파일은 Rust CLI(<code>task-tracker</code>)에서도 그대로 쓸 수 있어요.<br>항목을 더블클릭하면 알림이 켜지고 꺼집니다.</p>
+      <p class="muted small">할 일은 이 브라우저에 저장됩니다. 내보낸 파일은 Rust CLI(<code>task-tracker</code>)에서도 그대로 쓸 수 있어요.<br>항목을 더블클릭하면 알림이 켜지고 꺼집니다. 삭제하거나 목록을 바꾼 직후에는 <kbd>Ctrl</kbd>+<kbd>Z</kbd> 또는 "되돌리기"로 취소할 수 있어요.</p>
     </footer>
   </main>
   <div id="toasts" class="toasts" role="status" aria-live="polite"></div>

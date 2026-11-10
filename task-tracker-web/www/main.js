@@ -3,6 +3,7 @@ import init, { Tracker } from "./pkg/task_tracker_web.js";
 const STORAGE_KEY = "task-tracker.tsv";
 const PREFS_KEY = "task-tracker.prefs";
 const NOTIFIED_KEY = "task-tracker.notified";
+const UNDO_MS = 8000;
 const $ = (id) => document.getElementById(id);
 
 function readStorage(key) {
@@ -20,6 +21,7 @@ function readJson(key, fallback) {
 // (and sortable) in the CLI's tasks.tsv. Anything else is shown as free text.
 const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?$/;
 const DATE_ONLY_NOTIFY_HOUR = 9; // reminders for date-only tasks fire at 9:00
+const REPEAT_LABEL = { daily: "매일", weekly: "매주", monthly: "매월" };
 
 function pad(n) { return String(n).padStart(2, "0"); }
 function isoDate(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -32,7 +34,8 @@ function parseDay(day) {
   const hasTime = h !== undefined;
   const at = (hh, mm) => new Date(+y, +mo - 1, +d, hh, mm);
   const date = hasTime ? at(+h, +mi) : at(23, 59);
-  if (Number.isNaN(date.getTime())) return null;
+  // Reject dates JS would silently roll over (e.g. 2026-02-31 -> March 3).
+  if (Number.isNaN(date.getTime()) || date.getMonth() !== +mo - 1 || date.getDate() !== +d) return null;
   return {
     date,
     hasTime,
@@ -55,11 +58,13 @@ function formatDay(day) {
   return { text, overdue: date < new Date() };
 }
 
+function truncate(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+
 // ---------- state ----------
 const SAMPLE = [
-  ["병원 예약", `${daysFromNow(1)} 14:30`, true],
-  ["학교 상담", `${daysFromNow(2)} 13:30`, true],
-  ["장보기", daysFromNow(1), false],
+  ["병원 예약", `${daysFromNow(1)} 14:30`, true, ""],
+  ["학교 상담", `${daysFromNow(2)} 13:30`, true, ""],
+  ["장보기", daysFromNow(1), false, "weekly"],
 ];
 
 await init();
@@ -72,7 +77,7 @@ try {
   console.warn("저장된 데이터를 읽지 못해 새로 시작합니다:", e);
   tracker = new Tracker();
 }
-if (saved == null) SAMPLE.forEach(([t, d, r]) => tracker.add(t, d, r));
+if (saved == null) SAMPLE.forEach(([t, d, r, rep]) => tracker.add(t, d, r, rep));
 
 const prefs = { sort: "date", onlyReminders: false, hideDone: false, ...readJson(PREFS_KEY, {}) };
 $("sort").value = prefs.sort;
@@ -81,9 +86,11 @@ $("hide-done").checked = prefs.hideDone;
 
 /** Task being edited: { id, legacyDay } or null when adding. */
 let editing = null;
+/** Current search text (not remembered between visits). */
+let query = "";
 
 function allTasks() {
-  return JSON.parse(tracker.tasksJson(prefs.sort === "date"));
+  return JSON.parse(tracker.tasksJson(prefs.sort === "date", ""));
 }
 
 function persist() {
@@ -92,16 +99,71 @@ function persist() {
   checkDue();
 }
 
+// ---------- undo ----------
+// Before a destructive change we keep the saved TSV; "되돌리기" (or Ctrl+Z) restores it.
+// Only the latest change can be undone, and only for UNDO_MS.
+let undoState = null; // { snapshot, el, timer }
+
+function clearUndo() {
+  if (!undoState) return;
+  clearTimeout(undoState.timer);
+  undoState.el.remove();
+  undoState = null;
+}
+
+function offerUndo(message, snapshot) {
+  clearUndo();
+  const el = toast(message, { label: "되돌리기", onClick: undo, ms: UNDO_MS });
+  undoState = { snapshot, el, timer: setTimeout(clearUndo, UNDO_MS) };
+}
+
+function undo() {
+  if (!undoState) return;
+  const { snapshot } = undoState;
+  clearUndo();
+  try {
+    const next = Tracker.load(snapshot);
+    closeForm();
+    tracker.free();
+    tracker = next;
+    persist();
+    toast("되돌렸어요", { ms: 3000 });
+  } catch (err) {
+    toast("되돌리지 못했어요: " + (err.message ?? err), { ms: 5000 });
+  }
+}
+
+/** Run a change, save it, and offer to undo it. */
+function mutate(message, change) {
+  const snapshot = tracker.save();
+  change();
+  persist();
+  offerUndo(message, snapshot);
+}
+
+document.addEventListener("keydown", (e) => {
+  if (!undoState || e.shiftKey || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z") return;
+  if (e.target.closest?.("input, textarea, select")) return; // keep native text undo
+  e.preventDefault();
+  undo();
+});
+
 // ---------- rendering ----------
 function render() {
   const all = allTasks();
-  const shown = all
+  const matched = JSON.parse(tracker.tasksJson(prefs.sort === "date", query));
+  const shown = matched
     .filter((t) => !prefs.onlyReminders || t.reminder)
     .filter((t) => !prefs.hideDone || !t.done);
   $("tasks").replaceChildren(...shown.map(taskItem));
   $("empty").hidden = shown.length > 0;
+  $("empty").textContent = query.trim()
+    ? `"${query.trim()}"에 맞는 할 일이 없습니다`
+    : "표시할 할 일이 없습니다";
   const done = all.filter((t) => t.done).length;
-  $("count").textContent = `${all.length}개 · 완료 ${done}개`;
+  $("count").textContent = query.trim()
+    ? `검색 ${shown.length}개 · 전체 ${all.length}개`
+    : `${all.length}개 · 완료 ${done}개`;
   $("clear-done").disabled = done === 0;
 }
 
@@ -120,7 +182,7 @@ function taskItem(task) {
   check.className = "done-check";
   check.checked = task.done;
   check.setAttribute("aria-label", task.done ? `${task.text} 완료 취소` : `${task.text} 완료`);
-  check.addEventListener("change", () => { tracker.toggleDone(task.id); persist(); });
+  check.addEventListener("change", () => completeTask(task));
 
   const body = document.createElement("div");
   body.className = "task-body";
@@ -134,6 +196,12 @@ function taskItem(task) {
     p.textContent = late ? `${text} · 지남` : text;
     if (late) p.className = "overdue";
     p.title = task.day;
+    if (task.repeat) {
+      const badge = document.createElement("span");
+      badge.className = "repeat-badge";
+      badge.textContent = `🔁 ${REPEAT_LABEL[task.repeat] ?? task.repeat}`;
+      p.append(" ", badge);
+    }
     body.append(p);
   }
 
@@ -147,13 +215,23 @@ function taskItem(task) {
   const del = button("icon del", "✕", "삭제");
   del.addEventListener("click", () => {
     if (editing?.id === task.id) closeForm();
-    tracker.remove(task.id);
-    persist();
+    mutate(`"${truncate(task.text, 20)}" 삭제했어요`, () => tracker.remove(task.id));
   });
   actions.append(edit, bell, del);
 
   li.append(check, body, actions);
   return li;
+}
+
+/** Checkbox handler: complete / reopen; a repeating task moves to its next day instead. */
+function completeTask(task) {
+  const snapshot = tracker.save();
+  tracker.toggleDone(task.id, isoDate(new Date()));
+  persist();
+  const now = allTasks().find((t) => t.id === task.id);
+  if (now && !task.done && !now.done && now.day !== task.day) {
+    offerUndo(`🔁 다음 일정: ${formatDay(now.day).text}`, snapshot);
+  }
 }
 
 function button(cls, text, label) {
@@ -198,6 +276,7 @@ function startEdit(task) {
   $("text").value = task.text;
   $("date").value = parsed?.datePart ?? "";
   $("time").value = parsed?.timePart ?? "";
+  $("repeat").value = task.repeat ?? "";
   $("reminder").checked = task.reminder;
   if (editing.legacyDay) {
     $("legacy-day").textContent = `기존 날짜: "${editing.legacyDay}" — 새로 선택하면 바뀝니다`;
@@ -219,8 +298,14 @@ $("add-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const date = $("date").value;   // "YYYY-MM-DD" or ""
   const time = $("time").value;   // "HH:MM" or ""
+  const repeat = $("repeat").value;
   if (time && !date) {
     $("form-error").textContent = "시간을 넣으려면 날짜도 선택하세요";
+    $("date").focus();
+    return;
+  }
+  if (repeat && !date) {
+    $("form-error").textContent = "반복하려면 날짜를 선택하세요";
     $("date").focus();
     return;
   }
@@ -229,24 +314,28 @@ $("add-form").addEventListener("submit", (e) => {
   const reminder = $("reminder").checked;
   try {
     if (editing) {
-      tracker.update(editing.id, $("text").value, day);
+      tracker.update(editing.id, $("text").value, day, repeat);
       const current = allTasks().find((t) => t.id === editing.id);
       if (current && current.reminder !== reminder) tracker.toggle(editing.id);
     } else {
-      tracker.add($("text").value, day, reminder);
+      tracker.add($("text").value, day, reminder, repeat);
     }
   } catch (err) {
     $("form-error").textContent = err.message ?? String(err);
     $("text").focus();
     return;
   }
-  const wasEditing = editing;
-  if (wasEditing) closeForm();
+  if (editing) closeForm();
   else { $("form-error").textContent = ""; e.target.reset(); $("text").focus(); }
   persist();
 });
 
-// ---------- filters ----------
+// ---------- search / filters ----------
+$("search").addEventListener("input", (e) => {
+  query = e.target.value;
+  render();
+});
+
 function savePrefs() {
   prefs.sort = $("sort").value;
   prefs.onlyReminders = $("only-reminders").checked;
@@ -258,12 +347,17 @@ function savePrefs() {
 
 // ---------- bulk actions / import / export ----------
 $("clear").addEventListener("click", () => {
-  if (confirm("모든 할 일을 삭제할까요?")) { closeForm(); tracker.clear(); persist(); }
+  if (!confirm("모든 할 일을 삭제할까요?")) return;
+  closeForm();
+  mutate("모든 할 일을 삭제했어요", () => tracker.clear());
 });
+
 $("clear-done").addEventListener("click", () => {
+  const snapshot = tracker.save();
   const n = tracker.clearDone();
-  toast(`완료한 할 일 ${n}개를 삭제했어요`);
   persist();
+  if (n > 0) offerUndo(`완료한 할 일 ${n}개를 삭제했어요`, snapshot);
+  else toast("삭제할 완료 항목이 없어요", { ms: 3000 });
 });
 
 $("export").addEventListener("click", () => {
@@ -280,10 +374,12 @@ $("import").addEventListener("change", async (e) => {
   if (!file) return;
   try {
     const next = Tracker.load(await file.text());
+    const snapshot = tracker.save();
     closeForm();
     tracker.free();
     tracker = next;
     persist();
+    offerUndo("파일을 가져와 목록을 바꿨어요", snapshot);
   } catch (err) {
     alert("파일을 읽지 못했습니다: " + (err.message ?? err));
   }
@@ -327,7 +423,7 @@ function checkDue() {
     if (!t.reminder || t.done) continue;
     const parsed = parseDay(t.day);
     if (!parsed) continue;
-    const key = `${t.id}|${t.day}`;
+    const key = `${t.id}|${t.day}`; // a repeating task's next day is a new key, so it notifies again
     const lateBy = now - parsed.notifyAt;
     // Due now, or became due within the last day while the page was closed.
     if (lateBy < 0 || lateBy > 24 * 60 * 60 * 1000 || notified.has(key)) continue;
@@ -341,15 +437,29 @@ function checkDue() {
   writeStorage(NOTIFIED_KEY, JSON.stringify([...notified].slice(-200)));
 }
 
-function toast(message) {
+/** Show a message at the bottom of the page. Returns the element. */
+function toast(message, { label, onClick, ms = 10000 } = {}) {
   const el = document.createElement("div");
   el.className = "toast";
-  el.textContent = message;
+  const text = document.createElement("span");
+  text.textContent = message;
+  const actions = document.createElement("div");
+  actions.className = "toast-actions";
+  if (label) {
+    const act = document.createElement("button");
+    act.type = "button";
+    act.className = "toast-action";
+    act.textContent = label;
+    act.addEventListener("click", onClick);
+    actions.append(act);
+  }
   const close = button("icon", "✕", "닫기");
   close.addEventListener("click", () => el.remove());
-  el.append(close);
+  actions.append(close);
+  el.append(text, actions);
   $("toasts").append(el);
-  setTimeout(() => el.remove(), 10000);
+  setTimeout(() => el.remove(), ms);
+  return el;
 }
 
 updateNotifyUi();
