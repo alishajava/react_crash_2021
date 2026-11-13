@@ -1,4 +1,5 @@
 import init, { Tracker } from "./pkg/task_tracker_web.js";
+import { createSync } from "./sync.js";
 
 const STORAGE_KEY = "task-tracker.tsv";
 const PREFS_KEY = "task-tracker.prefs";
@@ -94,6 +95,18 @@ function allTasks() {
 }
 
 function persist() {
+  writeStorage(STORAGE_KEY, tracker.save());
+  render();
+  checkDue();
+  sync.schedule();
+}
+
+/** Replace the whole list (used by GitHub sync). Throws if `tsv` is not valid. */
+function replaceList(tsv) {
+  const next = Tracker.load(tsv);
+  tracker.free();
+  tracker = next;
+  if (editing && !allTasks().some((t) => t.id === editing.id)) closeForm();
   writeStorage(STORAGE_KEY, tracker.save());
   render();
   checkDue();
@@ -462,7 +475,80 @@ function toast(message, { label, onClick, ms = 10000 } = {}) {
   return el;
 }
 
+// ---------- GitHub sync ----------
+function timeText(d) {
+  return new Intl.DateTimeFormat("ko-KR", { hour: "numeric", minute: "2-digit" }).format(d);
+}
+
+function onSyncStatus({ state, message, at, gistUrl, connected }) {
+  $("sync-setup").hidden = connected;
+  $("sync-connected").hidden = !connected;
+  $("sync-conflict").hidden = state !== "conflict";
+  $("sync-open").hidden = !gistUrl;
+  if (gistUrl) $("sync-open").href = gistUrl;
+  const last = at ? ` (마지막 저장 ${timeText(at)})` : "";
+  $("sync-status").textContent = {
+    off: "연결하면 할 일이 내 GitHub 계정에 자동 저장되고, 다른 기기에서도 같은 목록을 볼 수 있어요.",
+    syncing: "GitHub과 맞추는 중…",
+    ok: `✓ GitHub에 저장됨${at ? ` · ${timeText(at)}` : ""}`,
+    conflict: "⚠️ 아래에서 선택하기 전까지는 GitHub에 저장하지 않습니다.",
+    auth: `⚠️ ${message}`,
+    offline: `⚠️ ${message}${last}`,
+    error: `⚠️ ${message}${last}`,
+  }[state];
+  $("sync-status").classList.toggle("error-text", ["auth", "offline", "error", "conflict"].includes(state));
+}
+
+const sync = createSync({
+  getTsv: () => tracker.save(),
+  applyTsv: replaceList,
+  onStatus: onSyncStatus,
+  onPulled: () => toast("다른 기기에서 바뀐 내용을 불러왔어요", { ms: 4000 }),
+});
+
+$("sync-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const token = $("sync-token").value.trim();
+  if (!token) {
+    $("sync-error").textContent = "토큰을 붙여 넣어 주세요";
+    return;
+  }
+  $("sync-error").textContent = "";
+  $("sync-connect").disabled = true;
+  $("sync-connect").textContent = "확인 중…";
+  try {
+    await sync.connect(token);
+    $("sync-token").value = "";
+  } catch (err) {
+    $("sync-error").textContent =
+      err.status === 401 ? "토큰이 올바르지 않아요. 다시 복사해서 붙여 넣어 주세요."
+      : err.status === 403 || err.status === 404 ? "이 토큰에는 gist 권한이 없어요. gist를 체크해서 다시 만들어 주세요."
+      : err.status ? `GitHub 오류 (${err.status}). 잠시 후 다시 시도해 주세요.`
+      : "GitHub에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.";
+  } finally {
+    $("sync-connect").disabled = false;
+    $("sync-connect").textContent = "연결";
+  }
+});
+
+$("sync-now").addEventListener("click", () => sync.syncNow());
+$("sync-disconnect").addEventListener("click", () => {
+  if (!confirm("이 브라우저에서 GitHub 연결을 끊을까요?\n할 일은 이 브라우저와 GitHub에 그대로 남습니다.")) return;
+  sync.disconnect();
+});
+$("sync-use-remote").addEventListener("click", async () => {
+  const snapshot = tracker.save();
+  try {
+    await sync.resolve("remote");
+    offerUndo("GitHub의 목록으로 바꿨어요", snapshot);
+  } catch (err) {
+    toast("GitHub의 목록을 읽지 못했어요: " + (err.message ?? err), { ms: 6000 });
+  }
+});
+$("sync-use-local").addEventListener("click", () => sync.resolve("local"));
+
 updateNotifyUi();
 render();
 checkDue();
+sync.start();
 setInterval(() => { checkDue(); render(); }, 30 * 1000);

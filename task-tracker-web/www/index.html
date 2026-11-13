@@ -86,6 +86,40 @@
       <p id="notify-status" class="muted small"></p>
     </section>
 
+    <section class="sync" aria-labelledby="sync-title">
+      <h2 id="sync-title" class="section-title">☁️ GitHub에 자동 저장</h2>
+      <p id="sync-status" class="muted small" role="status"></p>
+
+      <details id="sync-setup">
+        <summary>설정하기 (처음 한 번, 약 2분)</summary>
+        <ol class="steps small">
+          <li><a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Task%20Tracker" target="_blank" rel="noopener">GitHub 토큰 만들기 페이지</a>를 엽니다. (<b>gist</b> 권한만 체크돼 있으면 됩니다)</li>
+          <li>Expiration(만료)을 고르고 맨 아래 <b>Generate token</b>을 누릅니다.</li>
+          <li>나온 <code>ghp_…</code> 글자를 복사해 아래에 붙여 넣고 <b>연결</b>을 누릅니다.</li>
+        </ol>
+        <form id="sync-form" class="sync-form">
+          <input id="sync-token" type="password" placeholder="ghp_…" aria-label="GitHub 토큰" autocomplete="off" spellcheck="false">
+          <button id="sync-connect" type="submit" class="btn small-btn">연결</button>
+        </form>
+        <p id="sync-error" class="error" role="alert"></p>
+        <p class="muted small">토큰은 이 브라우저에만 보관되고, 할 일은 내 GitHub 계정의 비공개 Gist에 저장됩니다. 다른 기기에서도 같은 토큰으로 연결하면 같은 목록을 봅니다. 공용 컴퓨터에서는 쓰고 나서 "연결 끊기"를 눌러 주세요.</p>
+      </details>
+
+      <div id="sync-conflict" class="sync-conflict" hidden>
+        <p><b>이 기기와 GitHub의 목록이 서로 달라요.</b> 어느 쪽을 쓸까요?</p>
+        <div class="sync-actions">
+          <button id="sync-use-remote" type="button" class="btn small-btn">GitHub 목록 가져오기</button>
+          <button id="sync-use-local" type="button" class="btn ghost small-btn">이 기기 목록으로 덮어쓰기</button>
+        </div>
+      </div>
+
+      <div id="sync-connected" class="sync-actions" hidden>
+        <button id="sync-now" type="button" class="link">지금 동기화</button>
+        <a id="sync-open" class="link" target="_blank" rel="noopener" hidden>GitHub에서 보기</a>
+        <button id="sync-disconnect" type="button" class="link danger">연결 끊기</button>
+      </div>
+    </section>
+
     <footer class="footer">
       <div class="footer-actions">
         <button id="export" class="link" type="button">tasks.tsv 내보내기</button>
@@ -93,7 +127,7 @@
         <button id="clear-done" class="link" type="button">완료 항목 삭제</button>
         <button id="clear" class="link danger" type="button">모두 삭제</button>
       </div>
-      <p class="muted small">할 일은 이 브라우저에 저장됩니다. 내보낸 파일은 Rust CLI(<code>task-tracker</code>)에서도 그대로 쓸 수 있어요.<br>항목을 더블클릭하면 알림이 켜지고 꺼집니다. 삭제하거나 목록을 바꾼 직후에는 <kbd>Ctrl</kbd>+<kbd>Z</kbd> 또는 "되돌리기"로 취소할 수 있어요.</p>
+      <p class="muted small">할 일은 이 브라우저에 저장되고, 위에서 GitHub에 연결하면 거기에도 자동 저장됩니다. 내보낸 파일은 Rust CLI(<code>task-tracker</code>)에서도 그대로 쓸 수 있어요.<br>항목을 더블클릭하면 알림이 켜지고 꺼집니다. 삭제하거나 목록을 바꾼 직후에는 <kbd>Ctrl</kbd>+<kbd>Z</kbd> 또는 "되돌리기"로 취소할 수 있어요.</p>
     </footer>
   </main>
   <div id="toasts" class="toasts" role="status" aria-live="polite"></div>

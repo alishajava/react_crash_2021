@@ -25,3 +25,15 @@ cd dist && python3 -m http.server 8000   # open http://localhost:8000
 
 `.github/workflows/pages.yml` tests, builds and deploys the site to GitHub Pages on push.
 One-time setup: in the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
+
+## Saving to GitHub (optional)
+
+The "☁️ GitHub에 자동 저장" section syncs the list with a secret Gist in the user's own GitHub
+account, so it survives clearing browser data and is shared between devices. It needs a personal
+access token with only the `gist` scope; the token is kept in that browser's localStorage and is
+sent only to `api.github.com`.
+
+`www/sync.js` does a 3-way comparison (this device, the gist, and what both had after the last
+sync): changes from another device are pulled, local changes are pushed about 1.5 s after the
+last edit, and if both sides changed it asks which list to keep instead of overwriting either.
+It also syncs on page load, when the tab becomes visible, every minute, and when coming back online.
