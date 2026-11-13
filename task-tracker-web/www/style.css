@@ -189,3 +189,24 @@ kbd {
   font: inherit; font-size: .8em; padding: 1px 5px; border-radius: 4px;
   border: 1px solid var(--border); background: var(--task);
 }
+
+/* GitHub sync */
+.sync { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.section-title { margin: 0 0 4px; font-size: 1rem; }
+.sync p { margin: 0 0 8px; }
+.sync summary { cursor: pointer; color: var(--accent); font-size: .9rem; margin-bottom: 8px; }
+.sync summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.steps { margin: 0 0 10px; padding-left: 1.3em; display: grid; gap: 4px; }
+.steps a { color: var(--accent); }
+.sync-form { display: flex; gap: 8px; margin-bottom: 4px; }
+.sync-form input {
+  flex: 1; min-width: 0; padding: 7px 10px; font: inherit; color: var(--text);
+  background: var(--task); border: 1px solid var(--border); border-radius: 8px;
+}
+.sync-actions { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.sync-conflict { background: var(--task); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+.error-text { color: var(--danger); }
+.btn:disabled { opacity: .6; cursor: default; }
+
+/* the hidden attribute must win over display rules such as flex */
+[hidden] { display: none !important; }
