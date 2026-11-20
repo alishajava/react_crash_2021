@@ -68,3 +68,17 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## SAML SSO
+
+SAML needs a server-side Service Provider, so `server/` contains a small Express app
+(`@node-saml/passport-saml`). CRA proxies `/api` and `/saml` to it (`"proxy"` in package.json).
+
+1. `cd server && npm install && cp .env.example .env` and fill in the IdP values
+   (export them, e.g. `set -a; . ./.env; set +a`).
+2. `npm start` (port 4000), then `npm start` in the repo root (port 3000).
+3. Register the SP with your IdP using `http://localhost:3000/saml/metadata`
+   (ACS URL: `http://localhost:3000/saml/acs`, Entity ID = `SAML_ISSUER`).
+
+Endpoints: `GET /saml/login`, `POST /saml/acs`, `GET /saml/metadata`, `GET /api/me`, `POST /api/logout`.
+In production serve both behind one origin over HTTPS (cookie is `secure` when `NODE_ENV=production`).
