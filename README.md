@@ -68,3 +68,37 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## SAML SSO
+
+SAML needs a server-side Service Provider, so `server/` contains a small Express app
+(`@node-saml/passport-saml`). CRA proxies `/api` and `/saml` to it (`"proxy"` in package.json).
+
+1. `cd server && npm install && cp .env.example .env` and fill in the IdP values
+   (export them, e.g. `set -a; . ./.env; set +a`).
+2. `npm start` (port 4000), then `npm start` in the repo root (port 3000).
+3. Register the SP with your IdP using `http://localhost:3000/saml/metadata`
+   (ACS URL: `http://localhost:3000/saml/acs`, Entity ID = `SAML_ISSUER`).
+
+Endpoints: `GET /saml/login`, `POST /saml/acs`, `GET /saml/metadata`, `GET /api/me`, `POST /api/logout`.
+In production serve both behind one origin over HTTPS (cookie is `secure` when `NODE_ENV=production`).
+
+### HR information (NAC)
+
+After SAML login the server builds `employeeId`, `department`, `title`, `manager`, `groups`
+(returned by `/api/me`) from SAML attributes (`SAML_ATTR_MAP`) and, if `NAC_API_URL` is set, from
+the NAC REST API (NAC values win). Mapping of the NAC JSON response is set with `NAC_FIELD_MAP` /
+`NAC_RESPONSE_ROOT`. If the NAC call fails, login still succeeds with SAML attributes only
+(a warning is logged). See `server/.env.example`.
+
+#### Cisco ISE
+
+Set `NAC_PRESET=cisco-ise` (see `server/.env.example`). It calls
+`GET {NAC_BASE_URL}/ers/config/internaluser/name/{user}` and reads `InternalUser`.
+
+On ISE: Administration → System → Settings → API Settings → enable **ERS (Read)**; create an admin
+in the *ERS Operator* group for `NAC_API_USER`; add the HR values as custom user attributes
+(Administration → Identity Management → Settings → User Custom Attributes: `employeeId`,
+`department`, `title`, `manager`). ERS returns identity groups as GUIDs, so map them to names with `NAC_GROUP_MAP`.
+Limits: ERS only covers ISE *internal* users, not AD/LDAP users — if your users live in AD, put the HR
+fields in the SAML assertion instead (`SAML_ATTR_MAP`).

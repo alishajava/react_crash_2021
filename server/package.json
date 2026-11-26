@@ -1,0 +1,16 @@
+{
+  "name": "saml-sso-server",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@node-saml/passport-saml": "^5.1.1",
+    "express": "^5.3.0",
+    "express-session": "^1.19.0",
+    "passport": "^0.7.0"
+  }
+}
