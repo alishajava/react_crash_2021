@@ -31,6 +31,19 @@ function App() {
         {auth.user ? (
           <>
             <p>Signed in as {auth.user.name} ({auth.user.email})</p>
+            <ul style={{ fontSize: '1rem', textAlign: 'left' }}>
+              {[
+                ['Employee ID', auth.user.employeeId],
+                ['Department', auth.user.department],
+                ['Title', auth.user.title],
+                ['Manager', auth.user.manager],
+                ['Groups', (auth.user.groups || []).join(', ')],
+              ]
+                .filter(([, v]) => v)
+                .map(([k, v]) => (
+                  <li key={k}>{k}: {v}</li>
+                ))}
+            </ul>
             <button onClick={logout}>Sign out</button>
           </>
         ) : (

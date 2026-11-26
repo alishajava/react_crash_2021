@@ -2,6 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const passport = require('passport');
 const { Strategy: SamlStrategy } = require('@node-saml/passport-saml');
+const { createHrResolver } = require('./hr');
 
 function createApp(env = process.env) {
   const required = ['SAML_ENTRY_POINT', 'SAML_IDP_CERT', 'SESSION_SECRET'];
@@ -9,6 +10,7 @@ function createApp(env = process.env) {
   if (missing.length) throw new Error(`Missing env: ${missing.join(', ')}`);
 
   const baseUrl = env.APP_URL || 'http://localhost:3000'; // browser-facing origin (CRA proxies /api, /saml)
+  const resolveHr = createHrResolver(env);
   const issuer = env.SAML_ISSUER || `${baseUrl}/saml/metadata`;
 
   passport.use(
@@ -22,12 +24,19 @@ function createApp(env = process.env) {
         wantAuthnResponseSigned: false,
         identifierFormat: null,
       },
-      (profile, done) =>
-        done(null, {
-          id: profile.nameID,
-          email: profile.email || profile.nameID,
-          name: profile.displayName || profile.cn || profile.email || profile.nameID,
-        }),
+      (profile, done) => {
+        const email = profile.email || profile.nameID;
+        resolveHr(profile, profile.employeeNumber || email)
+          .then((hr) =>
+            done(null, {
+              id: profile.nameID,
+              email,
+              name: profile.displayName || profile.cn || profile.email || profile.nameID,
+              ...hr,
+            })
+          )
+          .catch(done);
+      },
       (profile, done) => done(null, profile) // logout verify
     )
   );

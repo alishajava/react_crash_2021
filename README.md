@@ -82,3 +82,11 @@ SAML needs a server-side Service Provider, so `server/` contains a small Express
 
 Endpoints: `GET /saml/login`, `POST /saml/acs`, `GET /saml/metadata`, `GET /api/me`, `POST /api/logout`.
 In production serve both behind one origin over HTTPS (cookie is `secure` when `NODE_ENV=production`).
+
+### HR information (NAC)
+
+After SAML login the server builds `employeeId`, `department`, `title`, `manager`, `groups`
+(returned by `/api/me`) from SAML attributes (`SAML_ATTR_MAP`) and, if `NAC_API_URL` is set, from
+the NAC REST API (NAC values win). Mapping of the NAC JSON response is set with `NAC_FIELD_MAP` /
+`NAC_RESPONSE_ROOT`. If the NAC call fails, login still succeeds with SAML attributes only
+(a warning is logged). See `server/.env.example`.
