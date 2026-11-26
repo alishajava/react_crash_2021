@@ -26,7 +26,7 @@ function createApp(env = process.env) {
       },
       (profile, done) => {
         const email = profile.email || profile.nameID;
-        resolveHr(profile, profile.employeeNumber || email)
+        resolveHr(profile)
           .then((hr) =>
             done(null, {
               id: profile.nameID,

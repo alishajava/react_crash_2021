@@ -91,3 +91,43 @@ test('HR: NAC failure falls back to SAML attrs without throwing', async () => {
     nac.close();
   }
 });
+
+test('HR: Cisco ISE preset (ERS internaluser response, basic auth, group ID mapping)', async () => {
+  let seen;
+  const ise = await nacServer((req, res) => {
+    seen = { url: req.url, auth: req.headers.authorization, accept: req.headers.accept };
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({
+      InternalUser: {
+        id: 'u1', name: 'jdoe', enabled: true,
+        identityGroups: 'guid-1,guid-2',
+        customAttributes: { employeeId: 'E77', department: 'Sales', title: 'Lead', manager: 'kim' },
+      },
+    }));
+  });
+  try {
+    const r = createHrResolver({
+      NAC_PRESET: 'cisco-ise',
+      NAC_BASE_URL: `http://127.0.0.1:${ise.address().port}/`,
+      NAC_API_USER: 'ersadmin',
+      NAC_API_PASSWORD: 'pw',
+      NAC_LOOKUP_KEY: 'email',
+      NAC_STRIP_DOMAIN: 'true',
+      NAC_GROUP_MAP: JSON.stringify({ 'guid-1': 'Employees' }),
+    });
+    const hr = await r({ email: 'jdoe@corp.com', nameID: 'jdoe@corp.com' });
+    assert.strictEqual(seen.url, '/ers/config/internaluser/name/jdoe');
+    assert.strictEqual(seen.auth, 'Basic ' + Buffer.from('ersadmin:pw').toString('base64'));
+    assert.strictEqual(seen.accept, 'application/json');
+    assert.deepStrictEqual(hr, {
+      employeeId: 'E77', department: 'Sales', title: 'Lead', manager: 'kim',
+      groups: ['Employees', 'guid-2'], hrSource: 'saml+nac',
+    });
+  } finally {
+    ise.close();
+  }
+});
+
+test('HR: unknown preset is rejected', () => {
+  assert.throws(() => createHrResolver({ NAC_PRESET: 'nope' }), /Unknown NAC_PRESET/);
+});

@@ -90,3 +90,15 @@ After SAML login the server builds `employeeId`, `department`, `title`, `manager
 the NAC REST API (NAC values win). Mapping of the NAC JSON response is set with `NAC_FIELD_MAP` /
 `NAC_RESPONSE_ROOT`. If the NAC call fails, login still succeeds with SAML attributes only
 (a warning is logged). See `server/.env.example`.
+
+#### Cisco ISE
+
+Set `NAC_PRESET=cisco-ise` (see `server/.env.example`). It calls
+`GET {NAC_BASE_URL}/ers/config/internaluser/name/{user}` and reads `InternalUser`.
+
+On ISE: Administration → System → Settings → API Settings → enable **ERS (Read)**; create an admin
+in the *ERS Operator* group for `NAC_API_USER`; add the HR values as custom user attributes
+(Administration → Identity Management → Settings → User Custom Attributes: `employeeId`,
+`department`, `title`, `manager`). ERS returns identity groups as GUIDs, so map them to names with `NAC_GROUP_MAP`.
+Limits: ERS only covers ISE *internal* users, not AD/LDAP users — if your users live in AD, put the HR
+fields in the SAML assertion instead (`SAML_ATTR_MAP`).
